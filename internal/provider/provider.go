@@ -36,6 +36,11 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PRITUNL_CONNECTION_CHECK", true),
 			},
+			"skip_if_missing": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PRITUNL_SKIP_IF_MISSING", false),
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"pritunl_organization": resourceOrganization(),
@@ -55,6 +60,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	secret := d.Get("secret").(string)
 	insecure := d.Get("insecure").(bool)
 	connectionCheck := d.Get("connection_check").(bool)
+	skipIfMissing := d.Get("skip_if_missing").(bool)
 
 	apiClient := pritunl.NewClient(url, token, secret, insecure)
 
@@ -62,6 +68,9 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		// execute test api call to ensure that provided credentials are valid and pritunl api works
 		err := apiClient.TestApiCall()
 		if err != nil {
+			if skipIfMissing {
+				return nil, nil
+			}
 			return nil, diag.FromErr(err)
 		}
 	}
